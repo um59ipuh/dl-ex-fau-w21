@@ -4,9 +4,6 @@ from scipy import misc, ndimage
 import numpy as np
 import matplotlib.pyplot as plt
 
-# In this exercise task you will implement an image generator. Generator objects in python are defined as having a next function.
-# This next function returns the next generated object. In our case it returns the input of a neural network each time it gets called.
-# This input consists of a batch of images and its corresponding labels.
 class ImageGenerator:
 
     def __init__(self, file_path, label_path, batch_size, image_size, rotation=False, mirroring=False, shuffle=False):
@@ -21,18 +18,13 @@ class ImageGenerator:
         f = open(label_path)
         self.labels = list(json.load(f).items())
 
-        # define epoch for each object
-        self.current_epoch = 1
+        if shuffle:
+            np.random.shuffle(self.labels)
+
+        # epoch for each object
+        self.epoch = 0
         self.used_data = set()
         self.tracker = 0
-
-        # These need to include:
-        # the batch size
-        # the image size
-        # flags for different augmentations and whether the data should be shuffled for each epoch
-        # Also depending on the size of your data-set you can consider loading all images into memory here already.
-        # The labels are stored in json format and can be directly loaded as dictionary.
-        # Note that the file names correspond to the dicts of the label dictionary.
 
         self.class_dict = {0: 'airplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer', 5: 'dog', 6: 'frog',
                            7: 'horse', 8: 'ship', 9: 'truck'}
@@ -45,11 +37,17 @@ class ImageGenerator:
         # Note that your amount of total data might not be divisible without remainder with the batch_size.
         # Think about how to handle such cases
 
+        self.aug_mir_flag = True
+        self.aug_rot_flag = True
+
         # update current epoch
         if len(self.used_data) >= self.label_len:
-            self.current_epoch += 1 # new epoch
+            self.epoch += 1 # new epoch
             self.used_data = set() # reset used data
             self.tracker = 0
+            # if new epoch then shuffle again
+            if self.shuffle:
+                np.random.shuffle(self.labels)
 
         images = []
         labels_array = []
@@ -58,10 +56,8 @@ class ImageGenerator:
         # then create a image list for a batch
         start = self.tracker
         end = self.tracker + self.batch_size
-        end = end if end <= len(self.labels) else len(self.labels)
+        end = end if end <= self.label_len else self.label_len
         one_time_check = True
-
-        print(start, end)
 
         while start < end:
             label = self.labels[start]
@@ -71,6 +67,7 @@ class ImageGenerator:
             # TODO: augment image
             image = self.augment(image)
             # TODO: resize image based on image_size
+            image = np.resize(image, tuple(self.image_size))
             images.append(image)
             labels_array.append(label[1])
             self.used_data.add(label[0])
@@ -87,6 +84,7 @@ class ImageGenerator:
             # TODO: augment image
             image = self.augment(image)
             # TODO: resize image based on image_size
+            image = np.resize(image, tuple(self.image_size)) #(self.image_size[0], self.image_size[1], sel)
             images.append(image)
             labels_array.append(label[1])
             self.used_data.add(label[0])
@@ -94,42 +92,34 @@ class ImageGenerator:
 
         self.tracker = end
 
-        print(len(images), len(labels_array))
-
-        return (images, labels_array)
+        return (np.array(images), labels_array)
 
     def augment(self,img):
         # this function takes a single image as an input and performs a random transformation
         # (mirroring and/or rotation) on it and outputs the transformed image
         #TODO: implement augmentation function
         aug_img = img
-        aug_mir_flag = True
-        aug_rot_flag = False
-
-        # for shuffling
-        if self.shuffle:
-            pass
 
         if self.mirroring:
-            if not aug_mir_flag:
-                aug_mir_flag = True
+            if not self.aug_mir_flag:
+                self.aug_mir_flag = True
             else:
-                aug_img = np.flipud(aug_img)
-                aug_mir_flag = False
+                aug_img = np.fliplr(aug_img)
+                self.aug_mir_flag = False
 
         if self.rotation:
-            if not aug_mir_flag:
-                aug_mir_flag = True
+            if not self.aug_rot_flag:
+                self.aug_rot_flag = True
             else:
+                self.aug_rot_flag = False
                 deg = np.random.choice(np.linspace(90, 270, 3))
                 aug_img = ndimage.rotate(aug_img, deg)
-                aug_rot_flag = False
 
         return aug_img
 
     def current_epoch(self):
         # return the current epoch number
-        return self.current_epoch
+        return self.epoch
 
     def class_name(self, x):
         # This function returns the class name for a specific input
@@ -139,11 +129,22 @@ class ImageGenerator:
     def show(self):
         # In order to verify that the generator creates batches as required, this functions calls next to get a
         # batch of images and labels and visualizes it.
-        #TODO: implement show method
+        # TODO: implement show method
         images, labels = self.next()
-        pass
+        row = self.batch_size // 3
+        col = 3
+        plt.figure()
+        img_num = 1
+        for image, label in zip(images, labels):
+            # fig.add_subplot(row, col, img_num)
+            plt.subplot(row, col, img_num)
+            plt.title(self.class_name(label))
+            plt.imshow(image)
+            img_num += 1
+
+        plt.tight_layout()
+        plt.show()
 
 if __name__ == '__main__':
-    gen = ImageGenerator('exercise_data/', 'Labels.json', 12, [32, 32, 3])
-    while True:
-        gen.next()
+    gen = ImageGenerator('exercise_data/', 'Labels.json', 12, [50, 50, 3], rotation=False, mirroring=False, shuffle=False)
+    gen.show()
