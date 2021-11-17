@@ -6,9 +6,10 @@ class CrossEntropyLoss:
         pass
 
     def forward(self, prediction_tensor, label_tensor):
-        # TODO:
-        pass
+        self.prediction_tensor = prediction_tensor
+        eps = np.finfo(float).eps
+        loss = -np.sum(label_tensor * np.log(self.prediction_tensor + eps))
+        return loss
 
     def backward(self, label_tensor):
-        # TODO:
-        pass
+        return - label_tensor / self.prediction_tensor

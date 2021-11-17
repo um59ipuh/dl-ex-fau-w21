@@ -1,14 +1,14 @@
 import numpy as np
-import Base
+from .Base import BaseLayer
 
-class SoftMax(Base):
+class SoftMax(BaseLayer):
 
     def __init__(self):
-        pass
+        BaseLayer.__init__(self)
 
     def forward(self, input_tensor):
-        # TODO:
-        pass
+        exp = np.exp(input_tensor)
+        return exp / np.sum(exp, axis=0)
 
     def backward(self, error_tensor):
         # TODO:

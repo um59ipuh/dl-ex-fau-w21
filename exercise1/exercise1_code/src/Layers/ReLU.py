@@ -1,13 +1,13 @@
 import numpy as np
-import Base
+from .Base import BaseLayer
 
-class ReLU(Base):
+class ReLU(BaseLayer):
 
     def __init__(self):
-        pass
+        BaseLayer.__init__(self)
 
     def forward(self, input_tensor):
-        pass
+        return np.maximum(0, input_tensor)
 
     def backward(self, error_tensor):
         pass
