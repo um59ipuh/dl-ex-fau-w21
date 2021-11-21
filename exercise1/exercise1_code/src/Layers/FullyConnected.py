@@ -1,18 +1,25 @@
+import sys
 import numpy as np
 from .Base import BaseLayer
 
 class FullyConnected(BaseLayer):
+
+    prev_weight_tensor = None
 
     def __init__(self, input_size, output_size):
         BaseLayer.__init__(self)
         self.trainable = True
         self.input_size = input_size
         self.output_size = output_size
+        self.batch_size = None
 
-        self.weights = np.random.rand(self.input_size, self.output_size) # generates value [0, 1)
+        # generate random weights for synapse; raw + 1 for bias
+        self.weights = np.random.rand(self.input_size, self.output_size)
 
-        # set the default optimizer as SGD
-        self._optimizer = 'sgd'
+        # Optimizer is not set yet
+        self._optimizer = None
+        self.input_tensor = None
+        self.gradient_weights = None
 
     @property
     def optimizer(self):
@@ -23,14 +30,29 @@ class FullyConnected(BaseLayer):
         self._optimizer = value
 
     def forward(self, input_tensor):
-        return np.dot(input_tensor, self.weights)
+        self.input_tensor = input_tensor
+        bias = np.ones((1, input_tensor.shape[1]))
+        input_tensor_with_bias = np.concatenate((input_tensor, bias), axis=0)
+        # input_tensor_with_bias
+        self.tensor_value = np.dot(input_tensor, self.weights)
+
+        print(self.tensor_value.shape)
+
+        return self.tensor_value
 
     def backward(self, error_tensor):
-        return np.dot(self.optimizer.transpose(), error_tensor)
-#serves as the input tensor for the next layer. input tensor is a matrix with input size columns and batch size rows. 
-#The batch size represents the number of inputs processed simultaneously. The output size is a parameter of the layer specifying the number of
-#columns of the output
-# returns a tensor that serves as the error tensor for the previous layer. Quick reminder: in the backward pass we are
-#going in the other direction as in the forward pass.
-#Use the method calculate update(weight tensor, gradient tensor) of your optimizer in your backward pass, in order to update your weights. 
-#Don’t perform an update if the optimizer is not set.
+        gradient = np.dot(self.input_tensor.transpose(), error_tensor)
+        if FullyConnected.prev_weight_tensor is not None:
+            gradient = np.dot(FullyConnected.prev_weight_tensor.transpose() ,gradient)
+        else:
+            pass
+        if self.optimizer is not None:
+            sgd = self.optimizer
+            self.weights = sgd.calculate_update(self.weights, gradient)
+
+        self.gradient_weights = gradient
+
+        # save the previous weight
+        FullyConnected.prev_weight_tensor = self.weights
+
+        return error_tensor
